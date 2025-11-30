@@ -122,6 +122,8 @@ htail = asb.Wing(name = "HTail", symmetric = True,
              ]
 )
 
+V_ht = htail.area() * l_ht / (wing.area() * wing.mean_aerodynamic_chord())
+
 ### Vertical Tailplane
 AR_vt = 2.0
 taper_vt = 0.6
@@ -154,6 +156,8 @@ vtail = asb.Wing(name = "VTail", symmetric = False,
                           for i in range(np.length(vtail_zs))
              ]
 )
+
+V_vt = vtail.area() * l_vt / (wing.area() * wing_span)
 
 ### Fuselage
 x_tail = np.maximum(l_ht, l_vt)
@@ -225,27 +229,260 @@ x_cg_wing, z_cg_wing = lifting_surface_planform_cg(wing, span_axis="y")
 mass_props['wing'] = asb.mass_properties_from_radius_of_gyration(
     mass = wing.volume() * density_wing,
     x_cg = x_cg_wing,
-    # x_cg = (0.50 - 0.25) * wing_root_chord,
     z_cg = z_cg_wing,
-    # z_cg = (0.03591) * (np.sind(wing_dihedral_angle_deg) / np.sind(11)) * (wing_span / 1),
     )
 
-### Horizontal Tailplane
+### Horizontal tailplane
 x_cg_ht, z_cg_ht = lifting_surface_planform_cg(htail, span_axis="y")
 
 mass_props["htail_surfaces"] = asb.mass_properties_from_radius_of_gyration(
     mass = htail.volume() * density_wing,
     x_cg = x_cg_ht,
-    # x_cg = htail.xsecs[0].xyz_le[0] + 0.50 * htail.xsecs[0].chord,
     z_cg = z_cg_ht,
 )
 
-### Vertical Tailplane
+### Vertical tailplane
 x_cg_vt, z_cg_vt = lifting_surface_planform_cg(vtail, span_axis="z")
 
 mass_props["vtail_surfaces"] = asb.mass_properties_from_radius_of_gyration(
     mass = vtail.volume() * density_wing,
     x_cg = x_cg_vt,
-    # x_cg=  vtail.xsecs[0].xyz_le[0] + 0.50 * vtail.xsecs[0].chord,
     z_cg = z_cg_vt,
 )
+
+### Linkages
+mass_props["linkages"] = asb.MassProperties(
+    mass = 0.001,
+    x_cg = x_tail / 2
+)
+
+### Avionics
+mass_props["Receiver"] = asb.mass_properties_from_radius_of_gyration(
+    mass = 0.005,
+    x_cg = x_nose + 0.010
+)
+
+mass_props["battery"] = asb.mass_properties_from_radius_of_gyration(
+    mass = 0.009 + 0.004,
+    x_cg = x_nose + 0.05
+)
+
+mass_props["servo"] = asb.mass_properties_from_radius_of_gyration(
+    mass = 4 * 0.0022,
+    x_cg = x_nose + 0.015
+)
+
+### Boom
+mass_props["boom"] = asb.mass_properties_from_radius_of_gyration(
+    mass = 0.009 * (x_tail - x_nose),
+    x_cg = (x_nose + x_tail) / 2
+)
+
+### Pod
+mass_props["pod"] = asb.MassProperties(
+    mass = 0.007,
+    x_cg = (x_nose + 0.75 * wing_root_chord) / 2
+)
+
+### Ballast
+mass_props["ballast"] = asb.mass_properties_from_radius_of_gyration(
+    mass = opti.variable(init_guess = 0, lower_bound = 0,),
+    x_cg = opti.variable(init_guess = 0, lower_bound = x_nose, upper_bound = x_tail),
+)
+
+### Summation
+mass_props_TOGW = asb.MassProperties(mass=0)
+for k, v in mass_props.items():
+    mass_props_TOGW = mass_props_TOGW + v
+
+### Glue weight
+mass_props['glue_weight'] = mass_props_TOGW * 0.08
+mass_props_TOGW += mass_props['glue_weight']
+
+### Centre of gravity
+x_cg_total, y_cg_total, z_cg_total = mass_props_TOGW.xyz_cg
+
+### Moment of inertia
+J_cg = mass_props_TOGW.inertia_tensor
+I_xx = J_cg[0, 0]
+
+
+##### Aerodynamics and Stability
+
+### Aerodynamic force-moment model
+ab = asb.AeroBuildup(airplane = airplane, op_point = op_point, xyz_ref = mass_props_TOGW.xyz_cg)
+
+### Stability derivatives
+aero = ab.run_with_stability_derivatives(alpha = True, beta = True, p = True, q = True, r = True,)
+
+### Performance quantities
+LD = aero["L"] / aero["D"]
+power_loss = aero["D"] * op_point.velocity
+sink_rate = power_loss / 9.81 / mass_props_TOGW.mass
+static_margin = (aero["x_np"] - mass_props_TOGW.x_cg) / wing.mean_aerodynamic_chord()
+
+
+##### Finalize Optimization Problem
+
+### Objective
+obj_sink = 0.7 * sink_rate
+obj_mass = 2.0 * mass_props_TOGW.mass
+obj_inertia = 140.0 * I_xx
+obj_wingload = 0.02 * (mass_props_TOGW.mass * g / wing.area())
+
+objective = obj_sink + obj_mass + obj_inertia + obj_wingload
+penalty = (mass_props["ballast"].x_cg / 1e3) ** 2
+
+opti.minimize(objective + penalty)
+
+### Optimization constraints
+opti.subject_to([
+    # aerodynamics
+    aero["L"] >= 9.81 * mass_props_TOGW.mass, # lift >= weight
+    # stability
+    aero["Cm"] == 0,                          # trimmed flight
+    aero["Clb"] <= -0.025,
+    static_margin >= 0.04,
+    static_margin <= 0.10,
+    V_ht >= 0.40,
+    V_ht <= 0.70,
+    V_vt >= 0.02,
+    V_vt <= 0.04,
+    # material
+    x_tail - x_nose < 0.8                     # maximum carbon fibre tube length
+])
+
+### Additional constraint
+opti.subject_to([
+    LD_cruise == LD,
+    design_mass_TOGW == mass_props_TOGW.mass
+])
+
+
+##### Solve Optimization Problem
+
+if __name__ == '__main__': # only run this block when the file is executed directly
+    try:
+        sol = opti.solve()
+    except RuntimeError:
+        sol = opti.debug
+    s = lambda x: sol.value(x)
+
+    ### Turn symbolic airplane into numeric values
+    airplane = sol(airplane)
+    op_point = sol(op_point)
+    mass_props = sol(mass_props)
+    mass_props_TOGW = sol(mass_props_TOGW)
+    aero = sol(aero)
+    
+    wing = copy.deepcopy(airplane.wings[0])
+    htail = copy.deepcopy(airplane.wings[1])
+    vtail = copy.deepcopy(airplane.wings[2])
+    fuselage = copy.deepcopy(airplane.fuselages[0])
+
+    ### Make a simplified wing for Athena Vortex Lattice
+    wing_lowres = copy.deepcopy(wing)
+    xsecs_to_keep = np.arange(len(wing.xsecs)) % 2 == 0
+    xsecs_to_keep[0] = True
+    xsecs_to_keep[-1] = True
+    wing_lowres.xsecs = np.array(wing_lowres.xsecs)[xsecs_to_keep]
+
+    airplane_avl = asb.Airplane(
+                wings = [wing_lowres, htail, vtail,],
+                fuselages = [fuselage]
+            )
+    airplane_avl = copy.deepcopy(airplane_avl)
+    
+    ### Run Athena Vortex Lattice to cross-check stability derivatives
+    try:
+        avl_aero = asb.AVL(
+            airplane = airplane_avl,
+            op_point = op_point,
+            xyz_ref = mass_props_TOGW.xyz_cg,
+            working_directory = "avl_debug"
+        ).run()
+    except FileNotFoundError:
+        class EmptyDict:
+            def __getitem__(self, item):
+                return "Install AVL to see this."
+
+        avl_aero = EmptyDict()
+
+
+    ##### Result
+
+    ### Help fomatting
+    import matplotlib.pyplot as plt
+    import aerosandbox.tools.pretty_plots as p
+    from aerosandbox.tools.string_formatting import eng_string
+
+    print_title = lambda s: print(s.upper().join(["*" * 20] * 2))
+
+    def fmt(x):
+        return f"{s(x):.6g}"
+    
+    ### Output summary
+    print_title("Outputs")
+    for k, v in {
+        "mass_TOGW"             : f"{fmt(mass_props_TOGW.mass)} kg ({fmt(mass_props_TOGW.mass / u.lbm)} lbm)",
+        "L/D (actual)"          : fmt(LD_cruise),
+        "Cruise Airspeed"       : f"{fmt(op_point.velocity)} m/s",
+        "Cruise AoA"            : f"{fmt(op_point.alpha)} deg",
+        "Cruise CL"             : fmt(aero['CL']),
+        "Sink Rate"             : f"{fmt(sink_rate)} m/s",
+        "Cma"                   : fmt(aero['Cma']),
+        "Cnb"                   : fmt(aero['Cnb']),
+        "Cm"                    : fmt(aero['Cm']),
+        "Wing Reynolds Number"  : eng_string(op_point.reynolds(sol(wing.mean_aerodynamic_chord()))),
+        "AVL: Cma"              : avl_aero['Cma'],
+        "AVL: Cnb"              : avl_aero['Cnb'],
+        "AVL: Cm"               : avl_aero['Cm'],
+        "AVL: Clb Cnr / Clr Cnb": avl_aero['Clb Cnr / Clr Cnb'],
+        "CG location"           : "(" + ", ".join([fmt(xyz) for xyz in mass_props_TOGW.xyz_cg]) + ") m",
+        "Wing Span"             : f"{fmt(wing_span)} m ({fmt(wing_span / u.foot)} ft)",
+    }.items():
+        print(f"{k.rjust(25)} = {v}")
+
+    ### Mass breakdown
+    fmtpow = lambda x: fmt(x) + " W"
+
+    print_title("Mass props")
+    for k, v in mass_props.items():
+        print(f"{k.rjust(25)} = {v.mass * 1e3:.2f} g ({v.mass / u.oz:.2f} oz)")
+
+    ### Plotting
+    if make_plots:
+        # geometry
+        airplane.draw_three_view(show=False)
+        p.show_plot(tight_layout=False, savefig="figures/three_view.png")
+
+        # mass budget
+        fig, ax = plt.subplots(figsize=(12, 5), subplot_kw=dict(aspect="equal"), dpi=300)
+
+        name_remaps = {
+            **{
+                k: k.replace("_", " ").title()
+                for k in mass_props.keys()
+            },
+        }
+
+        mass_props_to_plot = copy.deepcopy(mass_props)
+        if mass_props_to_plot["ballast"].mass < 1e-6:
+            mass_props_to_plot.pop("ballast")
+        p.pie(
+            values=[
+                v.mass
+                for v in mass_props_to_plot.values()
+            ],
+            names=[
+                n if n not in name_remaps.keys() else name_remaps[n]
+                for n in mass_props_to_plot.keys()
+            ],
+            center_text=f"$\\bf{{Mass\\ Budget}}$\nTOGW: {s(mass_props_TOGW.mass * 1e3):.2f} g",
+            label_format=lambda name, value, percentage: f"{name}, {value * 1e3:.2f} g, {percentage:.1f}%",
+            startangle=110,
+            arm_length=30,
+            arm_radius=20,
+            y_max_labels=1.1
+        )
+        p.show_plot(savefig="figures/mass_budget.png")

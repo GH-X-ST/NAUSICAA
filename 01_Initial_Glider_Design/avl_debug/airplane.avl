@@ -1,0 +1,358 @@
+Untitled
+#Mach
+0        ! AeroSandbox note: This is overwritten later to match the current OperatingPoint Mach during the AVL run.
+#IYsym   IZsym   Zsym
+0       0   0
+#Sref    Cref    Bref
+0.08905376086507158 0.13951504816959864 0.7000000069729623
+#Xref    Yref    Zref
+0.06955384090311367 0.0 0.004464627869635677
+# CDp
+0
+#===============================================================================
+SURFACE
+Main Wing
+#Nchordwise  Cspace  [Nspanwise   Sspace]
+12   1   12   1
+
+YDUPLICATE
+0
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+-0.048930637 0 0 0.19572255 0
+
+AFIL
+avl_debug\airplane.avl.af0
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+-0.0065935214 0.10764908 0.010458739 0.15338543 0
+
+AFIL
+avl_debug\airplane.avl.af1
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.031599343 0.20476072 0.019893705 0.11519257 0
+
+AFIL
+avl_debug\airplane.avl.af2
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.061909371 0.28182895 0.027381335 0.084882541 0
+
+AFIL
+avl_debug\airplane.avl.af3
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.081369607 0.3313098 0.03218869 0.065422305 0
+
+AFIL
+avl_debug\airplane.avl.af4
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.088075148 0.34835974 0.033845192 0.058716764 0
+
+AFIL
+avl_debug\airplane.avl.af5
+
+CLAF
+1.049456274985656  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#===============================================================================
+SURFACE
+HTail
+#Nchordwise  Cspace  [Nspanwise   Sspace]
+12   1   12   1
+
+YDUPLICATE
+0
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.41227757 0 0 0.05438922 0
+
+AFIL
+avl_debug\airplane.avl.af6
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.41650066 0.029913553 0 0.05016613 0
+
+AFIL
+avl_debug\airplane.avl.af7
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42043595 0.057788546 0 0.046230837 0
+
+AFIL
+avl_debug\airplane.avl.af8
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42381526 0.081725345 0 0.042851524 0
+
+AFIL
+avl_debug\airplane.avl.af9
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.4264083 0.1000927 0 0.040258486 0
+
+AFIL
+avl_debug\airplane.avl.af10
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42803835 0.1116389 0 0.038628434 0
+
+AFIL
+avl_debug\airplane.avl.af11
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42859433 0.11557709 0 0.038072454 0
+
+AFIL
+avl_debug\airplane.avl.af12
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#===============================================================================
+SURFACE
+VTail
+#Nchordwise  Cspace  [Nspanwise   Sspace]
+12   1   12   1
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.40205723 0 0 0.064609558 0
+
+AFIL
+avl_debug\airplane.avl.af13
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.4087461 0 0.026755495 0.057920685 0
+
+AFIL
+avl_debug\airplane.avl.af14
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.41497914 0 0.051687647 0.051687647 0
+
+AFIL
+avl_debug\airplane.avl.af15
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42033157 0 0.073097371 0.046335216 0
+
+AFIL
+avl_debug\airplane.avl.af16
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42443863 0 0.08952563 0.042228151 0
+
+AFIL
+avl_debug\airplane.avl.af17
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42702044 0 0.099852866 0.039646342 0
+
+AFIL
+avl_debug\airplane.avl.af18
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#--------------------------------------------------
+SECTION
+#Xle    Yle    Zle     Chord   Ainc  [Nspanwise   Sspace]
+0.42790105 0 0.10337529 0.038765735 0
+
+AFIL
+avl_debug\airplane.avl.af19
+
+CLAF
+1.0616147503036646  # Computed using rule from avl_doc.txt
+
+CDCL
+#CL1  CD1  CL2  CD2  CL3  CD3
+0 0 0 0 0 0
+
+#==================================================
+BODY
+Fuse
+24 1
+
+BFIL
+avl_debug\airplane.avl.fuse0
+
+TRANSLATE
+0 0 0
+
