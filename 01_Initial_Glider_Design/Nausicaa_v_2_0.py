@@ -30,21 +30,32 @@ for v in airfoils.values():
 
 ##### Overall Specs
 
+### Gravitational acceleration
+g = 9.81
+
 ### Operating point
+r_target     = 0.7
+
 op_point = asb.OperatingPoint(
-    velocity = opti.variable(init_guess = 14, lower_bound = 1, log_transform = True),
-    alpha    = opti.variable(init_guess = 0, lower_bound = -10, upper_bound = 10)
+    velocity = opti.variable(init_guess = 15.5, lower_bound = 0.5, log_transform = True),
+    alpha    = opti.variable(init_guess = 0, lower_bound = -10, upper_bound = 10),
+    beta     = 0.0, # coordinated turn
+    p        = 0.0, # coordinated turn
+    q        = 0.0, # coordinated turn
+    r        = 0.0, # coordinated turn
 )
+phi          = opti.variable(init_guess = 30, lower_bound = 5.0, upper_bound = 65)
+
+n_load = 1 / np.cos(np.radians(phi))
+r_turn = op_point.velocity ** 2 / (g * np.tan(np.radians(phi)))
 
 ### Take off gross weight 
 design_mass_TOGW = opti.variable(init_guess = 0.1, lower_bound = 1e-3)
 design_mass_TOGW = np.maximum(design_mass_TOGW, 1e-3) # numerical clamp
 
-### Cruise L/D
-LD_cruise = opti.variable(init_guess = 15, lower_bound = 0.1, log_transform = True)
+### Effective L/D during coordinated turn
+LD_turn = opti.variable(init_guess = 15, lower_bound = 0.1, log_transform = True)
 
-### Gravitational acceleration
-g = 9.81
 
 ##### Vehicle Definition
 # Datum (0, 0, 0) is coincident with the quarter-chord-point of the centerline cross section of the main wing
@@ -53,7 +64,7 @@ g = 9.81
 x_nose = opti.variable(init_guess = -0.1, upper_bound = 1e-3,)
 
 ### Wing
-wing_span               = opti.variable(init_guess = 0.7, lower_bound = 0.1, upper_bound = 0.8)
+wing_span               = opti.variable(init_guess = 0.3, lower_bound = 0.1, upper_bound = 0.8)
 wing_dihedral_angle_deg = opti.variable(init_guess = 11, lower_bound = 0, upper_bound = 20)
 wing_root_chord         = opti.variable(init_guess = 0.15, lower_bound = 1e-3,)
 
@@ -92,8 +103,8 @@ wing = asb.Wing(name = "Main Wing", symmetric = True,
 ### Horizontal tailplane
 l_ht             = opti.variable(init_guess = 0.6, lower_bound = 0.2, upper_bound = 1.5)
 
-htail_span       = opti.variable(init_guess  = 0.4 * wing_span, lower_bound = 0.05, upper_bound = wing_span)
-htail_root_chord = opti.variable(init_guess  = 0.5 * wing_root_chord, lower_bound = 1e-3, upper_bound = wing_root_chord)
+htail_span       = opti.variable(init_guess  = 0.15, lower_bound = 0.05, upper_bound = wing_span)
+htail_root_chord = opti.variable(init_guess  = 0.07, lower_bound = 1e-3, upper_bound = wing_root_chord)
 
 taper_ht = 1.0
 def htail_chord(y):
@@ -125,8 +136,8 @@ V_ht = htail.area() * l_ht / (wing.area() * wing.mean_aerodynamic_chord())
 ### Vertical tailplane
 l_vt             = opti.variable(init_guess = 0.6, lower_bound = 0.2, upper_bound = 1.5)
 
-vtail_span       = opti.variable(init_guess  = 0.3 * wing_span, lower_bound = 0.05, upper_bound = wing_span)
-vtail_root_chord = opti.variable(init_guess  = 0.4 * wing_root_chord, lower_bound = 1e-3, upper_bound = wing_root_chord)
+vtail_span       = opti.variable(init_guess  = 0.09, lower_bound = 0.05, upper_bound = wing_span)
+vtail_root_chord = opti.variable(init_guess  = 0.06, lower_bound = 1e-3, upper_bound = wing_root_chord)
 
 taper_vt = 1.0
 
@@ -348,11 +359,6 @@ mass_props_TOGW += mass_props['glue_weight']
 ### Centre of gravity
 x_cg_total, y_cg_total, z_cg_total = mass_props_TOGW.xyz_cg
 
-### Moment of inertia
-J_cg = mass_props_TOGW.inertia_tensor
-I_xx = J_cg[0, 0]
-
-
 ##### Aerodynamics and Stability
 
 ### Aerodynamic force-moment model
@@ -371,12 +377,7 @@ static_margin = (aero["x_np"] - mass_props_TOGW.x_cg) / wing.mean_aerodynamic_ch
 ##### Finalize Optimization Problem
 
 ### Objective
-obj_sink     = 0.25 * sink_rate
-obj_mass     = 5.0 * mass_props_TOGW.mass
-obj_inertia  = 5000.0 * I_xx
-obj_wingload = 0.01 * (mass_props_TOGW.mass * g / wing.area())
-
-objective = obj_sink + obj_mass + obj_inertia + obj_wingload
+objective = sink_rate
 penalty   = (mass_props["ballast"].x_cg / 1e3) ** 2
 
 opti.minimize(objective + penalty)
@@ -384,23 +385,24 @@ opti.minimize(objective + penalty)
 ### Optimization constraints
 opti.subject_to([
 
+    # coordinated turn
+    r_turn      == r_target,                          # enforce target turning radius               
+
     # aerodynamics
-    aero["L"]   >= 9.81 * mass_props_TOGW.mass, # lift >= weight
+    aero["L"]   == n_load * mass_props_TOGW.mass * g, # force balance in a coordinate turn
 
     # stability
-    aero["Cm"]  == 0,                           # trimmed flight
+    aero["Cm"]  == 0,                                 # trimmed in pitch
     aero["Clb"] <= -0.025,
     opti.bounded(0.04, static_margin, 0.10),
     opti.bounded(0.40, V_ht,          0.70),
     opti.bounded(0.02, V_vt,          0.04),
-
-    # material
-    # x_tail - x_nose < 0.8                      # maximum carbon fibre tube length
 ])
 
 ### Additional constraint
+
 opti.subject_to([
-    LD_cruise == LD,
+    LD_turn == LD,
     design_mass_TOGW == mass_props_TOGW.mass
 ])
 
@@ -436,12 +438,15 @@ if __name__ == '__main__': # only run this block when the file is executed direc
     ### Turn symbolic optimized values into numeric values
     # operating point
     op_point = sol(op_point)
+    phi      = sol(phi)
+    r_target = sol(r_target)
+    n_load   = sol(n_load)
 
     # take off gross weight 
     mass_props_TOGW = sol(mass_props_TOGW)
 
-    # cruise L/D
-    LD_cruise = sol(LD_cruise)
+    # effective L/D
+    LD_turn = sol(LD_turn)
 
     # nose and tail
     x_nose    = sol(x_nose)
@@ -465,11 +470,6 @@ if __name__ == '__main__': # only run this block when the file is executed direc
 
     ### Turn symbolic optimized problem into numeric values
     # objective
-    obj_sink     = sol(obj_sink)
-    obj_mass     = sol(obj_mass)
-    obj_inertia  = sol(obj_inertia)
-    obj_wingload = sol(obj_wingload)
-
     objective    = sol(objective)
     penalty      = sol(penalty)
 
@@ -522,17 +522,6 @@ if __name__ == '__main__': # only run this block when the file is executed direc
     
     ### Optimisation problem summary
 
-    # breakdown
-    print_title("Objective contribution breakdown")
-    for k, v in {
-    "Total Objective" : fmt(objective),
-    "Sink rate"       : f"{fmt(obj_sink)} ({s(obj_sink) / s(objective) * 100:.1f}%)",
-    "Weight"          : f"{fmt(obj_mass)} ({s(obj_mass) / s(objective) * 100:.1f}%)",
-    "Inertia I_xx"    : f"{fmt(obj_inertia)} ({s(obj_inertia) / s(objective) * 100:.1f}%)",
-    "Wing loading"    : f"{fmt(obj_wingload)} ({s(obj_wingload) / s(objective) * 100:.1f}%)",
-    }.items():
-        print(f"{k.rjust(25)} = {v}")
-
     # boundary
     print_title("Design variable")
 
@@ -548,8 +537,9 @@ if __name__ == '__main__': # only run this block when the file is executed direc
         status = " ,".join(hits) if hits else "OK"
         print(f"{name:25s} = {v: .6g}  [{status}]")
 
-    check_var("V (m/s)",           op_point.velocity,          lb = 1.0)
+    check_var("V (m/s)",           op_point.velocity,          lb = 0.5, ub = 15.0)
     check_var("alpha (deg)",       op_point.alpha,             lb = -10.0,  ub = 10.0)
+    check_var("phi (deg)",         phi,                        lb = 5.0,  ub = 65.0)
 
     check_var("TOGW (kg)",         design_mass_TOGW,           lb = 1e-3)
 
@@ -581,10 +571,12 @@ if __name__ == '__main__': # only run this block when the file is executed direc
     print_title("Outputs")
     for k, v in {
         "mass_TOGW"             : f"{fmt(mass_props_TOGW.mass)} kg ({fmt(mass_props_TOGW.mass / u.lbm)} lbm)",
-        "L/D (actual)"          : fmt(LD_cruise),
-        "Cruise Airspeed"       : f"{fmt(op_point.velocity)} m/s",
-        "Cruise AoA"            : f"{fmt(op_point.alpha)} deg",
-        "Cruise CL"             : fmt(aero['CL']),
+        "L/D (turn)"            : fmt(LD_turn),
+        "Bank Angle"            : f"{fmt(phi)} deg",
+        "Load Factor"           : fmt(n_load),
+        "Turn Airspeed"         : f"{fmt(op_point.velocity)} m/s",
+        "Turn AoA"              : f"{fmt(op_point.alpha)} deg",
+        "Turn CL"               : fmt(aero['CL']),
         "Sink Rate"             : f"{fmt(sink_rate)} m/s",
         "Cma"                   : fmt(aero['Cma']),
         "Cnb"                   : fmt(aero['Cnb']),
@@ -677,12 +669,15 @@ if __name__ == '__main__': # only run this block when the file is executed direc
     design_results = {
 
         # operating point
-        "V_cruise"           : to_scalar(op_point.velocity),
-        "alpha_deg"          : to_scalar(op_point.alpha),
+        "V_operate (m/s)"    : to_scalar(op_point.velocity),
+        "alpha (deg)"        : to_scalar(op_point.alpha),
+        "phi (deg)"          : to_scalar(op_point.phi),
+        "r_target (m)"       : to_scalar(r_target),
+        "n_load"             : to_scalar(n_load),
 
         # global mass and performance
         "TOGW (kg)"          : to_scalar(mass_props_TOGW.mass),
-        "L/D_cruise"         : to_scalar(LD_cruise),
+        "L/D_turn"           : to_scalar(LD_turn),
         "sink_rate (m/s)"    : to_scalar(sink_rate),
         "static_margin"      : to_scalar(static_margin),
         "V_ht"               : to_scalar(V_ht),
@@ -719,17 +714,17 @@ if __name__ == '__main__': # only run this block when the file is executed direc
         "penalty"            : to_scalar(penalty),
 
         # CG location
-        "x_cg_m"             : to_scalar(mass_props_TOGW.xyz_cg[0]),
-        "y_cg_m"             : to_scalar(mass_props_TOGW.xyz_cg[1]),
-        "z_cg_m"             : to_scalar(mass_props_TOGW.xyz_cg[2]),
+        "x_cg (m)"           : to_scalar(mass_props_TOGW.xyz_cg[0]),
+        "y_cg (m)"           : to_scalar(mass_props_TOGW.xyz_cg[1]),
+        "z_cg (m)"           : to_scalar(mass_props_TOGW.xyz_cg[2]),
 
         # Inertia tensor (about CG)
-        "I_xx"               : to_scalar(mass_props_TOGW.inertia_tensor[0, 0]),
-        "I_yy"               : to_scalar(mass_props_TOGW.inertia_tensor[1, 1]),
-        "I_zz"               : to_scalar(mass_props_TOGW.inertia_tensor[2, 2]),
-        "I_xy"               : to_scalar(mass_props_TOGW.inertia_tensor[0, 1]),
-        "I_xz"               : to_scalar(mass_props_TOGW.inertia_tensor[0, 2]),
-        "I_yz"               : to_scalar(mass_props_TOGW.inertia_tensor[1, 2]),
+        "I_xx (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[0, 0]),
+        "I_yy (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[1, 1]),
+        "I_zz (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[2, 2]),
+        "I_xy (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[0, 1]),
+        "I_xz (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[0, 2]),
+        "I_yz (kg m^2)"      : to_scalar(mass_props_TOGW.inertia_tensor[1, 2]),
     }
 
     # component masses
